@@ -135,6 +135,54 @@ type parser struct {
 	Code      *regexp.Regexp
 }
 
-func newParser() *parser {
-	return nil
+const (
+	nameReg   = `### (.+)`
+	classReg  = `# Class: (.+)`
+	formatReg = `# Format: (.+)`
+	cardReg   = `# (\d)x \((\d+)\) (.+)`
+	codeReg   = `(.+)`
+)
+
+func newParser() (*parser, error) {
+	p := &parser{}
+	compile := func(regStr, name string, assign func(*regexp.Regexp)) error {
+		reg, err := regexp.Compile(regStr)
+		if err != nil {
+			return fmt.Errorf("Failed to compile %v regexp: %v", name, err.Error())
+		}
+		assign(reg)
+		return nil
+	}
+
+	if err := compile(nameReg, "name", func(reg *regexp.Regexp) {
+		p.Name = reg
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := compile(classReg, "class", func(reg *regexp.Regexp) {
+		p.Class = reg
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := compile(formatReg, "format", func(reg *regexp.Regexp) {
+		p.Format = reg
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := compile(cardReg, "card", func(reg *regexp.Regexp) {
+		p.CardCount = reg
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := compile(codeReg, "code", func(reg *regexp.Regexp) {
+		p.Code = reg
+	}); err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }
