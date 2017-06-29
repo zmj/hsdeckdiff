@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 type deck struct {
@@ -17,7 +19,7 @@ type deck struct {
 
 type card struct {
 	Name string
-	Cost string
+	Cost int
 }
 
 type cardCount struct {
@@ -39,7 +41,8 @@ func (p *parser) parse(deckRaw io.Reader) (*deck, error) {
 		return nil
 	}
 
-	parseLine := func(lineName string, reg *regexp.Regexp, assign func([]string)) error {
+	type assignFunc func(match []string) error
+	parseLine := func(lineName string, reg *regexp.Regexp, assign assignFunc) error {
 		if err := nextLine(lineName); err != nil {
 			return err
 		}
@@ -50,24 +53,30 @@ func (p *parser) parse(deckRaw io.Reader) (*deck, error) {
 		if match == nil || len(match) < reg.NumSubexp()+1 {
 			return fmt.Errorf("Failed to parse %v line: %v", lineName, scanner.Text())
 		}
-		assign(match)
+		err := assign(match)
+		if err != nil {
+			return fmt.Errorf("Failed to assign %v line values: %v", lineName, err.Error())
+		}
 		return nil
 	}
 
-	if err := parseLine("name", p.Name, func(match []string) {
+	if err := parseLine("name", p.Name, func(match []string) error {
 		d.Name = match[1]
+		return nil
 	}); err != nil {
 		return nil, err
 	}
 
-	if err := parseLine("class", p.Class, func(match []string) {
+	if err := parseLine("class", p.Class, func(match []string) error {
 		d.Class = match[1]
+		return nil
 	}); err != nil {
 		return nil, err
 	}
 
-	if err := parseLine("format", p.Format, func(match []string) {
+	if err := parseLine("format", p.Format, func(match []string) error {
 		d.Format = match[1]
+		return nil
 	}); err != nil {
 		return nil, err
 	}
@@ -76,6 +85,46 @@ func (p *parser) parse(deckRaw io.Reader) (*deck, error) {
 		return nil, err
 	}
 
+	deckCardCount := 0
+	for {
+		if err := parseLine("card", p.CardCount, func(match []string) error {
+			cost, err := strconv.Atoi(match[2])
+			if err != nil {
+				return fmt.Errorf("Failed to parse cost value: %v %v", match[2], err.Error())
+			}
+			count, err := strconv.Atoi(match[1])
+			if err != nil {
+				return fmt.Errorf("Failed to parse count value: %v %v", match[1], err.Error())
+			}
+			card := cardCount{
+				Card: card{
+					Name: match[3],
+					Cost: cost,
+				},
+				Count: count,
+			}
+			d.Cards = append(d.Cards, card)
+			deckCardCount += card.Count
+			return nil
+		}); err != nil {
+			if strings.TrimSpace(scanner.Text()) != "#" {
+				return nil, fmt.Errorf("Unexpected card line: %v %v", scanner.Text(), err.Error())
+			}
+			if deckCardCount != 30 {
+				return nil, fmt.Errorf("Deck does not contain 30 cards")
+			}
+			break
+		}
+	}
+
+	if err := parseLine("code", p.Code, func(match []string) error {
+		d.Code = match[1]
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }
 
 type parser struct {
@@ -84,4 +133,8 @@ type parser struct {
 	Format    *regexp.Regexp
 	CardCount *regexp.Regexp
 	Code      *regexp.Regexp
+}
+
+func newParser() *parser {
+	return nil
 }

@@ -1,13 +1,13 @@
 package main
 
 type deckDiff struct {
-	from    deck
-	to      deck
+	from    *deck
+	to      *deck
 	Added   []cardCount
 	Removed []cardCount
 }
 
-func diff(from, to deck) deckDiff {
+func diff(from, to *deck) deckDiff {
 	return deckDiff{
 		from:    from,
 		to:      to,
