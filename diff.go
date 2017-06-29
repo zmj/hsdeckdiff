@@ -62,6 +62,10 @@ func (d *deckDiff) String() string {
 		s := fmt.Sprintf("-%v %v\n", remove.Count, remove.Card.Name)
 		buffer.WriteString(s)
 	}
+	if len(d.Added) == 0 && len(d.Removed) == 0 {
+		s := fmt.Sprintf("No changes")
+		buffer.WriteString(s)
+	}
 	return strings.TrimSpace(buffer.String())
 }
 
